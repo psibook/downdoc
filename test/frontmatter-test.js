@@ -41,6 +41,29 @@ describe('downdoc() — yaml frontmatter', () => {
       const result = downdoc(input, { frontmatterVendor: 'claude' })
       assert.equal(result.startsWith('---\n'), false)
     })
+
+    it('should not emit frontmatter for a frontmatter-prefixed attribute with too few segments', () => {
+      const input = heredoc`
+      = Title
+      :frontmatter-claude-incomplete: missing the field segment
+
+      Body.
+      `
+      const result = downdoc(input, { frontmatterVendor: 'claude' })
+      assert.equal(result.startsWith('---'), false)
+    })
+
+    it('should not capture frontmatter attributes set in the document body (after first blank line)', () => {
+      const input = heredoc`
+      = Title
+
+      Body paragraph.
+
+      :frontmatter-claude-memory-name: Late binding
+      `
+      const result = downdoc(input, { frontmatterVendor: 'claude' })
+      assert.equal(result.startsWith('---'), false)
+    })
   })
 
   describe('T2 — full frontmatter emission with kebab→camelCase (R2, R5)', () => {
