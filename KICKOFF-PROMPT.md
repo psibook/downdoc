@@ -113,16 +113,18 @@ Full requirements: see `PLAN.md` §2 (R1–R12).
 pwd && git rev-parse --show-toplevel && git branch --show-current && git log --oneline -1
 ```
 
-Expected output:
+Expected output (Lines 1–3 must match EXACTLY; Line 4 is informational — it changes as commits land on the branch):
 
 ```
 /Users/dev/continental/software/cases/downdoc/.claude/worktrees/yaml-frontmatter
 /Users/dev/continental/software/cases/downdoc/.claude/worktrees/yaml-frontmatter
 feature/yaml-frontmatter
-2dfada7 Open contract: scaffold PLAN, ISSUES, DEBUG for yaml-frontmatter feature
+<short-hash> <commit subject — most recent commit on feature/yaml-frontmatter>
 ```
 
-If Line 3 starts with `claude/<adjective>-...`: Code auto-created a worktree because the path was wrong. STOP. `/exit`. Re-open with the EXACT path from Field 1. See `~/.claude/SESSION-LAUNCH-CHEATSHEET.md` "If Line 3 is `claude/<adjective>-<surname>-<hex>` → ABORT" for the recovery procedure.
+**Line 4 reference (current HEAD as of this packet's last update):** the most recent commit on `feature/yaml-frontmatter` at the moment this packet was written. New commits land on this branch as work progresses, so Line 4 will evolve. Do NOT use Line 4 as a strict-equality check — use it only to confirm you're on the expected branch with reachable history.
+
+**The only failure mode that requires ABORT** — Line 3 begins with `claude/<adjective>-<surname>-<hex>` (e.g. `claude/nifty-ishizaka-9ec0b8`). That means Claude.app auto-created a worktree because the path you opened wasn't a registered worktree. STOP, `/exit`, re-launch following the precise instructions at the end of this packet. Do NOT proceed with contract work.
 
 ---
 
