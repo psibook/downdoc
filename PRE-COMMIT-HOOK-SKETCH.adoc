@@ -1,0 +1,173 @@
+= Design Sketch: `~/continental/scripts/adoc2md.sh` + `~/continental/hooks/pre-commit`
+:toc: macro
+:source-highlighter: rouge
+
+Design-only sketch for the two pieces of `~/continental/` infrastructure that enforce the 2026-05-18 AsciiDoctor-over-Markdown format policy.
+Implementation is deferred to a follow-on session.
+
+This file is the canonical source.
+A `PRE-COMMIT-HOOK-SKETCH.md` is generated from it via `./bin/downdoc --frontmatter-vendor=claude PRE-COMMIT-HOOK-SKETCH.adoc`, in obedience to the same policy it documents.
+
+toc::[]
+
+== Purpose
+
+The format policy installed at `~/.claude/projects/-Users-dev-continental/memory/feedback_asciidoctor_over_markdown.{adoc,md}` declares:
+
+[quote]
+____
+The `.md` is regenerated from `.adoc` by the pre-commit hook in `~/continental/`, which invokes downdoc with `--frontmatter-vendor=claude`.
+____
+
+That hook does not yet exist.
+Neither does the wrapper script it calls.
+This sketch designs both, so that a future session can land them with a clear specification.
+
+== Two pieces, one contract
+
+[cols="1,3"]
+|===
+| Piece | Responsibility
+
+| `~/continental/scripts/adoc2md.sh` | Thin wrapper around `npx downdoc --frontmatter-vendor=claude`. Takes an `.adoc` path, writes the matching `.md` path beside it. Idempotent. Exits non-zero on conversion failure.
+| `~/continental/hooks/pre-commit` | Git hook installed in every Continental case repo. For each staged `.adoc` that has a `.md` twin, re-runs `adoc2md.sh` and compares. If the staged `.md` differs from the freshly-generated output, the commit aborts with a diff + instructions.
+|===
+
+The wrapper is the build tool.
+The hook is the enforcement layer.
+The wrapper must be callable independently — both by the hook and by hand.
+
+== `~/continental/scripts/adoc2md.sh` — wrapper
+
+=== Interface
+
+[source,shell]
+----
+adoc2md.sh <path-to.adoc>            # write <path-to>.md
+adoc2md.sh --check <path-to.adoc>    # write to stdout; do not modify the .md file
+adoc2md.sh --help                    # usage
+adoc2md.sh --version                 # downdoc + wrapper versions
+----
+
+=== Behavior
+
+. Resolve `<path-to.adoc>` to an absolute path.
+  Error if the file does not exist or does not end in `.adoc`.
+. Derive the output path by replacing the trailing `.adoc` with `.md`.
+. Invoke `npx downdoc --frontmatter-vendor=claude -o <derived-output> <input>`.
+. Propagate downdoc's exit code.
+. On `--check`, write to stdout instead of the derived output path.
+
+=== Error modes
+
+[cols="1,2"]
+|===
+| Condition | Exit code
+
+| input missing or not `.adoc` | 2
+| `downdoc` not on `PATH` | 3
+| downdoc conversion failed | downdoc's own non-zero exit code
+|===
+
+=== Test cases (Preference 6: success / edge / expected-failure)
+
+. *Success.* Run on `feedback_asciidoctor_over_markdown.adoc` from the downdoc fixture set; assert the produced `.md` is byte-identical to `.expected.md` (1,824 bytes, hash a known value).
+. *Edge.* Run on an `.adoc` with no `:frontmatter-claude-*:` attributes; assert the produced `.md` has no `---` frontmatter block (per R10 of the feature spec).
+. *Expected failure.* Run on `does-not-exist.adoc`; assert exit 2 and an error mentioning the missing file.
+
+== `~/continental/hooks/pre-commit` — enforcement
+
+=== Trigger conditions
+
+The hook runs on every `git commit` in any repo under `~/continental/`.
+It scans the staged file list for `.adoc` files.
+For each, it determines whether a `.md` twin exists in the same directory.
+
+=== Hook decision table
+
+[cols="1,1,1,3"]
+|===
+| `.adoc` staged? | `.md` twin exists? | `.md` staged? | Action
+
+| yes | no  | n/a | Skip. The .adoc has no twin — nothing to enforce.
+| yes | yes | no  | Abort commit. The .md exists on disk but is not staged; the developer changed the .adoc without restaging the .md.
+| yes | yes | yes | Re-run `adoc2md.sh --check`; compare to the staged `.md`. If different, abort with a diff. If identical, allow.
+| no  | yes | yes | Allow. The .md was modified directly — the policy says this should not happen, but the hook does not currently detect direct .md edits (Open question 1).
+| no  | yes | no  | Allow. Untouched .md twin.
+|===
+
+=== Failure message template
+
+When the hook aborts, the message reads:
+
+[source]
+----
+pre-commit: AsciiDoctor/Markdown twin out of sync
+
+  source: <path>.adoc (staged)
+  twin:   <path>.md   (staged or on disk)
+
+The .md is a build artifact of the .adoc. To bring them in sync:
+
+  1. Run:  ~/continental/scripts/adoc2md.sh <path>.adoc
+  2. Stage the regenerated .md:  git add <path>.md
+  3. Re-run your commit.
+
+(Or: temporarily bypass with --no-verify if you are sure the .md must
+diverge — but understand that this defeats the format-policy guarantee.)
+----
+
+=== Installation
+
+The hook is a single file, intended to be symlinked into each Continental case repo:
+
+[source,shell]
+----
+cd <repo-root>
+ln -s ~/continental/hooks/pre-commit .git/hooks/pre-commit
+----
+
+Or installed via a `~/continental/scripts/install-hooks.sh` helper that walks `~/continental/*/cases/*/` and installs into every `.git/hooks/` it finds.
+
+=== Test cases (Preference 6)
+
+. *Success.* In a sandbox repo: stage a modified `.adoc` whose corresponding `.md` is also staged and is the byte-identical output of `adoc2md.sh`. Commit. Assert it succeeds.
+. *Edge.* Stage an `.adoc` with no `.md` twin (e.g., a brand-new design doc). Commit. Assert it succeeds (no enforcement applies).
+. *Expected failure.* Stage an `.adoc` modification without staging the corresponding `.md`. Commit. Assert exit 1 and an error message naming the affected `.adoc`/`.md` pair.
+
+== Open questions for the Lieutenant
+
+. *Direct .md edits.* The hook above detects .md staleness when the .adoc changes, but not when the .md is edited by hand (without touching the .adoc). Should the hook also reject any commit where a `.md` with an `.adoc` twin is staged and the staged `.md` differs from the freshly-generated output, regardless of whether the .adoc was modified?
+  Pro: catches all violations of the policy.
+  Con: re-runs `adoc2md.sh` on every commit that touches any `.md`, adding latency.
+. *Scope of the hook.* Should it enforce only within `~/continental/` repos, or globally for any repo where it's installed? The cleanest design: ship one hook that activates only inside `~/continental/`, so accidental installation in unrelated repos is a no-op.
+. *Pre-existing .md-only files.* `PLAN.md`, `DEBUG.md`, `ISSUES.md`, and `KICKOFF-PROMPT.md` in this repo are `.md`-only and pre-date the policy. Do we (a) leave them, (b) backfill `.adoc` sources, or (c) declare them grandfathered?
+. *Performance budget.* If a commit stages 30 `.adoc` files, the hook runs `adoc2md.sh` 30 times (and each spawns `npx downdoc`). On this VM that's a few seconds. Worth an `xargs -P` parallel mode? Or batch flag to downdoc?
+. *Bypass discipline.* `--no-verify` defeats the hook entirely. Do we want a softer escape hatch ("acknowledge the divergence with a git note") or is `--no-verify` the right pressure release?
+
+== What this sketch deliberately does NOT cover
+
+* The actual code for either script.
+  This document is a specification, not an implementation.
+* CI-side enforcement.
+  Pre-commit catches issues locally; a parallel CI check would catch `--no-verify` bypasses but is a separate contract.
+* Discovery of `.adoc`/`.md` twins outside the staged set.
+  The hook only inspects what's staged; a periodic `~/continental` audit script would scan the full tree.
+* Bidirectional sync.
+  The .md is always derived from the .adoc, never the reverse.
+  If the Lieutenant wants `.md` → `.adoc` (e.g., to backfill grandfathered files), that's a different tool, not this hook.
+
+== Next steps when the contract resumes
+
+. Decide the open questions above (1 through 5).
+. Implement `~/continental/scripts/adoc2md.sh` with Preference-6 tests.
+. Implement `~/continental/hooks/pre-commit` with Preference-6 tests.
+. Decide the installation mechanism (manual symlink vs. `install-hooks.sh`).
+. Backfill or grandfather the pre-existing `.md`-only files in `~/continental/` per the Lieutenant's ruling on Q3.
+
+== References
+
+* Format policy memory: `~/.claude/projects/-Users-dev-continental/memory/feedback_asciidoctor_over_markdown.{adoc,md}` (installed 2026-05-23 in this session).
+* Feature spec: `README.adoc` `[#yaml-frontmatter]` section in this repo.
+* Implementation: `lib/index.js` (Phase 2 GREEN, commit `bd3888e`) + `lib/cli.js` (Phase 3 GREEN, commit `423b79f`).
+* Real-world fixture test: `test/fixtures/feedback_asciidoctor_over_markdown.{adoc,expected.md}` + the `real-world fixture` test block in `test/frontmatter-test.js`.

@@ -275,6 +275,65 @@ Plus 2 fixture tests:
 
 ---
 
+### Session 2026-05-23 — Format-policy memory deployment + hook sketch (Charon: Claude Opus 4.7 1M context)
+
+**Contract:** First real-world deployment of the just-shipped `--frontmatter-vendor=claude` feature per the resume packet's bypassed Q1–Q5. Install the format-policy memory file; sketch the downstream `~/continental/` enforcement infrastructure.
+
+**Resume context:** Seven-field replay-packet from 2026-05-22 testament; bundle verified clean (734,570 bytes, 34 refs, SHA-1); four-line verification gate PASSED with `cbf0c82` at HEAD.
+
+**Work delivered:**
+
+| # | Action | Target | Status |
+|---|---|---|---|
+| 1 | Ratified target memory slug | `~/.claude/projects/-Users-dev-continental/` | DONE — Lieutenant chose Option A (Continental root, no per-case mirror) |
+| 2 | Ran production CLI on fixture | `./bin/downdoc --frontmatter-vendor=claude -o -` | PASS — byte-identical to `.expected.md` (1,824 bytes) |
+| 3 | Installed canonical `.adoc` | `~/.claude/projects/-Users-dev-continental/memory/feedback_asciidoctor_over_markdown.adoc` | DONE — 1,923 bytes, byte-identical to fixture |
+| 4 | Installed derived `.md` | `~/.claude/projects/-Users-dev-continental/memory/feedback_asciidoctor_over_markdown.md` | DONE — 1,824 bytes, byte-identical to `.expected.md` |
+| 5 | Updated `MEMORY.md` index | Inserted line 3 of the index list, before `feedback_document_formatting_styles.md` | DONE — all 10 entries resolve to existing files |
+| 6 | Verified frontmatter parses | 4 required keys present (`name`, `description`, `type`, `originSessionId`) | PASS — `originSessionId: 4b69ca29-dc2a-4765-b3f9-9d7a0925322d` matches 2026-05-18 origin |
+| 7 | Regression test sweep | `npm test` | PASS — 453/453 (no change from Session 2026-05-22 baseline) |
+| 8 | Drafted hook + wrapper sketch | `PRE-COMMIT-HOOK-SKETCH.adoc` (canonical) + `.md` (downdoc-derived) | DONE — 8,609 bytes `.adoc`, 8,568 bytes `.md` |
+| 9 | This findings entry | PLAN.md §Findings Log | DONE |
+| 10 | CASE-BOARD downdoc-row update | `~/continental/CASE-BOARD.md` downstream-unblocks list | (Pending — last task of session) |
+
+**T1–T5 acceptance status** (from resume packet Q5):
+
+| Test | Description | Result |
+|---|---|---|
+| T1 | Installed `.md` byte-identical to `.expected.md` | PASS — 1,824 bytes, `diff` empty |
+| T2 | Installed `.adoc` byte-identical to fixture | PASS — 1,923 bytes, `diff` empty |
+| T3 | Fresh session loads the new memory | PROVISIONAL — structural prerequisites verified (MEMORY.md valid, all references resolve, frontmatter parses, 4 canonical keys present). True fresh-session load deferred to next Charon launched at `~/continental/` root, since this session is keyed to the `downdoc` slug and cannot observe the `-Users-dev-continental` slug's loaded memory from inside itself. |
+| T4 | Re-running CLI produces byte-identical output | PASS — confirmed in step 2 above |
+| T5 | Downdoc test suite still passes 453/453 | PASS — confirmed in step 7 |
+
+### Findings F11–F14 (Session 2026-05-23)
+
+**F11 — Auto-memory loader is keyed per project slug, not "Continental-wide" in any global sense.** A memory file installed at `~/.claude/projects/-Users-dev-continental/memory/` loads ONLY when a session is launched with `~/continental/` as its project folder. Sessions in sub-case directories — like THIS session at `~/continental/software/cases/downdoc/.claude/worktrees/yaml-frontmatter/` — get their OWN project slug's memory dir and do NOT see the Continental-root memory. **Implication:** the format-policy memory installed in this session WILL NOT auto-load into the downdoc session that installed it, nor into any other case session (vibevoice, PSI, sonata-bumper, etc.). It loads only at the Continental-root level. The parking-lot `claude-memory-mirror` contract's per-case mirroring is the ONLY way to make a single "Continental-wide" memory truly visible everywhere. Without it, the format policy reaches case-specific sessions through other channels (CLAUDE.md `@`-references, RULES.md, the case-board, or a Charon's training-time defaults), not through the auto-memory subsystem.
+
+**F12 — `~/.claude/memory/` (global root, outside `projects/`) appears essentially deprecated.** Contains one stale entry (`feedback_debrief.md`, 1,207 bytes, mtime 2026-03-30) and a 122-byte `MEMORY.md` that indexes only that one file. By contrast, `~/.claude/projects/-Users-dev-continental/memory/` is actively maintained with 10 entries (now 11 after this session). The global root dir is not the right home for new feedback memories. **Generalization:** when the auto-memory subsystem offers multiple plausible locations, inspect their recency and population — the active location is obvious from `ls -lt`.
+
+**F13 — First live application of the format policy beyond the memory file itself.** `PRE-COMMIT-HOOK-SKETCH.adoc` (8,609 bytes) is now the canonical source; `PRE-COMMIT-HOOK-SKETCH.md` (8,568 bytes, 41 bytes smaller — downdoc strips/translates AsciiDoctor-specific syntax) is its downdoc-derived companion. This walks the talk of the policy in the very document that designs its enforcement. **Side observation:** the pre-existing Continental docs in this repo (`PLAN.md`, `DEBUG.md`, `ISSUES.md`, `KICKOFF-PROMPT.md`) remain `.md`-only — they pre-date the 2026-05-18 policy. Whether to backfill `.adoc` sources, grandfather them, or leave as-is is Open Question Q3 in the sketch. **Tooling note:** running `./bin/downdoc --frontmatter-vendor=claude PRE-COMMIT-HOOK-SKETCH.adoc` without `-o` derives the output path automatically (input `.adoc` → output `.md` in the same directory) — confirms the CLI's "If --output is not specified, the output file path is derived from FILE" behavior on a non-trivial document.
+
+**F14 — Production install verification by fixture-diff is the cheapest possible deployment check.** Running `./bin/downdoc --frontmatter-vendor=claude -o - test/fixtures/feedback_asciidoctor_over_markdown.adoc` and piping into `diff` against the fixture's `.expected.md` reproduces in-production what the test suite verifies in-repo. Both confirm 1,824 bytes byte-identical, no diff. **Generalizes:** any future packaging contract where the fixture IS the deployment payload can use the fixture-vs-tool-output diff as its deployment smoke test, with zero new tooling. The fixture acts as a contract between the test suite and the production install.
+
+### Coin & process accounting (Session 2026-05-23)
+
+- **Suite stayed:** Software throughout. No cross-suite work (the install to `~/.claude/projects/-Users-dev-continental/` is global-config infrastructure, not Continental-suite-coded). Single-suite-stay credit: **+2** (post-parlay).
+- **Contracts opened:** 0 (continuation of existing downdoc contract).
+- **Marker-class actions:** 0 (no public-repo creation, no force-push, no destructive operations).
+- **Debrief credit:** **+1** (this findings block).
+- **Costs:** **0** coins (no context switch, no new contract, no override).
+- **Net session balance impact:** +3 coins, to be applied at `/parlay` and `/checkpoint`.
+
+### What is deferred
+
+- **T3 true fresh-session verification.** Next Charon launched at `~/continental/` should confirm the new memory appears in the system prompt's auto-memory section, and that MEMORY.md reads as expected with the new entry inline.
+- **Hook + wrapper implementation.** The sketch is design-only. Implementation belongs in a future Software-suite session focused on `~/continental/` infrastructure — not this contract.
+- **Backfill or grandfather decision** for the pre-existing `.md`-only files in this repo (`PLAN.md`, `DEBUG.md`, `ISSUES.md`, `KICKOFF-PROMPT.md`). Open Q3 in the sketch.
+- **Phase 7 (upstream PR)** remains the optional follow-on it was at Session 2026-05-22.
+
+---
+
 ## Parlay: Session 2026-05-22 (Phases 1–6 delivery)
 
 **Contract:** Phases 1–6 of the YAML frontmatter feature per KICKOFF-PROMPT.md Q1–Q5 (RED tests, GREEN implementation, CLI wiring, docs, fixture, DEBUG.md refresh).
