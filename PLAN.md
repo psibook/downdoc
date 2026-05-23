@@ -178,4 +178,97 @@ File a PR against `opendevise/downdoc` proposing the feature for upstream inclus
 
 ## Findings Log (post-session entries land here per CLAUDE.md Debrief Rule)
 
-(empty — first session entries land at end of feature-work sessions)
+### Session 2026-05-22 — Phases 1 through 6 delivered (Charon: Claude Opus 4.7 1M context)
+
+**Phases shipped this session:**
+
+| Phase | Commit | Delivered |
+|---|---|---|
+| 1 (RED) | `eb21b46` | `test/frontmatter-test.js` with 16 tests (9 failing, 7 sentinels) |
+| 2 (GREEN) | `bd3888e` | `lib/index.js` implementation (42 net new lines); +2 sentinels; +1 coverage test for line 384 |
+| 3 (RED-cli) | `52adf15` | `test/cli-test.js` frontmatter block (5 failing, 1 sentinel) |
+| 3 (GREEN-cli) | `423b79f` | `lib/cli.js` flag wiring + `printUsage` formatter fix |
+| 4 (docs) | `0155dc8` | `README.adoc` YAML frontmatter section + `CHANGELOG.adoc` Unreleased entry |
+| 5 (fixture) | `00eaeb6` | `test/fixtures/feedback_asciidoctor_over_markdown.{adoc,expected.md}` + 2 fixture-based tests |
+| 6 (debug) | `0acfb00` | `DEBUG.md` refresh |
+
+**Final metrics (after `0acfb00`):**
+
+- Tests: **453 / 453 pass** (426 baseline + 27 new feature/coverage tests)
+- Coverage on `lib/index.js`: 100% statements / 100% branches / 100% functions / 100% lines
+- Coverage on `lib/cli.js`: 100% statements / 100% branches / 100% functions / 100% lines
+- Lint: clean (`npx -y @biomejs/biome@~2.4 lint --error-on-warnings`)
+
+**Done criteria status** (from KICKOFF-PROMPT.md Q3, all six PASS):
+
+1. All 426 existing tests pass — confirmed on every run since RED.
+2. ≥10 new tests covering R1–R12 — 26 new feature-related tests (18 lib + 6 CLI + 2 fixture).
+3. CLI end-to-end produces parseable YAML with 4 canonical fields — verified via fixture + structural YAML check.
+4. README has new section with worked example — `[#yaml-frontmatter]` section, dogfood-rendered.
+5. CHANGELOG has entry — Unreleased / Added section.
+6. Branch ready to merge to `psibook/downdoc:main` — yes (7 commits ahead of origin/feature/yaml-frontmatter).
+
+---
+
+### Findings F1–F10 (chronological)
+
+**F1 — Biome's `useOptionalChain` rule treats `&& obj.size` as a warning, and `--error-on-warnings` makes warnings fatal.** First run of `npm run lint` after the Phase 2 GREEN edits flagged `if (frontmatter && frontmatter.size)` and required `if (frontmatter?.size)` instead. The `--error-on-warnings` flag in the `lint` script (package.json line 27) means biome warnings exit non-zero. Fix was a one-character edit. **Lesson for this repo:** prefer optional chaining wherever biome will flag it; running lint as a separate step (not as part of `npm test`) means lint regressions can sneak past tests.
+
+**F2 — `npm run coverage` requires `reports/` to exist before it runs.** First coverage run failed with `ENOENT: no such file or directory, open 'reports/tests-xunit.xml'` because the test reporter writes the JUnit XML file before nyc creates the directory. Workaround: `mkdir -p reports` before `npm run coverage`. `reports/` is gitignored (`/reports/` in `.gitignore`), so the dir is not checked in; it must be re-created on a fresh checkout. **Potential fix (not applied):** add `reports/` to the npm script via `mkdir -p reports && npx -y nyc ...`. Deferred — out of scope for this contract.
+
+**F3 — Coverage discipline: distinguish "your code's gaps" from "pre-existing gaps" via `git stash`.** First coverage run after Phase 2 GREEN reported 99.74% branch coverage on `lib/index.js` with two uncovered branches at lines 53 and 384. To determine whether each was new or pre-existing, the procedure was: `git stash` (move my changes aside) → re-run coverage → see the baseline number → `git stash pop`. Baseline showed 99.86% with line 345 (= line 384 after my insertions) uncovered. Conclusion: line 53 was new (mine), line 384 was pre-existing. **Generalizes** to any feature work that adds branches — always check whether reported uncovered branches are yours before writing tests to cover them.
+
+**F4 — Line 384's `|| idx` defensive fallback is reachable through attribute-substitution-into-macros path.** The `if (~str.indexOf('m:['))` branch in `macros()` (line 384 of `lib/index.js`) has an inner `||` operator: `'$' + (this.pass[Number(idx)] || idx) + '$'`. The truthy side (`this.pass[Number(idx)]`) is reached by every normal stem macro test because `applySubs` pre-encodes `stem:[content]` → `stem:[N]` at line 344 *before* `macros()` runs, populating `this.pass[N]` with the original content. The fallback (`|| idx`) is reached when `stem:[X]` arrives at `macros()` without going through the pre-encoding — specifically, when `{attr}` expansion *during* the `attributes()` substitutor turns into `stem:[...]` *after* the line-344 pre-encoding check. Then `Number("x^2 + y^2") = NaN`, `this.pass[NaN] = undefined`, and the `||` falls through to `idx`. Test added at `test/downdoc-test.js` (the existing stem-macro group) with input `:equation: stem:[x^2 + y^2]` then `{equation}` in body. Output: `$x^2 + y^2$`. This brought `lib/index.js` to 100% branch coverage.
+
+**F5 — `parseArgs` with `multiple: true` always returns an array, even for single-value invocation.** `--frontmatter-vendor=claude` arrives as `values['frontmatter-vendor'] = ['claude']`. The lib API check `frontmatterVendor === 'all'` requires the *string* `'all'`, not `['all']`. Without unwrapping, `--frontmatter-vendor=all` would silently fail (treated as a literal vendor name "all" that no attribute matches). **Fix in `lib/cli.js`:** unwrap single-element arrays before passing through — `const frontmatterVendor = fmv?.length ? (fmv.length === 1 ? fmv[0] : fmv) : undefined`. Two-or-more values keep the array form; single values normalize to a bare string.
+
+**F6 — The existing `printUsage` formatter dropped hints on long-only options.** Original line: `const option = short ? \`-${short}, --${long}${hint ? ' ' + hint : ''}\` : \`--${long}\``. The `hint` was only appended when a short form was present. Fix: `const option = (short ? \`-${short}, --${long}\` : \`--${long}\`) + (hint ? ' ' + hint : '')`. Same behavior for all existing options (none had `hint` without `short`); enables `--frontmatter-vendor name` to display its hint, and generalizes to any future long-only-with-hint options. Caught in-session by writing the help-text RED test (`assertx.include(stdout.string, '--frontmatter-vendor name')`) — the test failed not because the flag was missing from help but because the hint was suppressed.
+
+**F7 — `heredoc` template tag handles backslash-newline correctly for AsciiDoctor continuation fixtures.** In a JS template literal, `\\` is one literal backslash. AsciiDoctor's attribute continuation is `<space><backslash><newline>`. So a fixture expressing continuation is written as:
+```js
+heredoc`
+:foo: First line \\
+second line
+`
+```
+which produces the string `:foo: First line \\nsecond line` (with `\\` being one backslash + literal newline). The Phase 2 GREEN line-fold pre-pass detects `line.endsWith(' \\')` and joins. Worth noting because the fixture format is subtle — easy to write `\\\\` accidentally and break the continuation match.
+
+**F8 — Off-feature byte-equivalence is enforced by construction, not by retesting after every edit.** The `captureFrontmatter` helper returns `resolved` unchanged when `frontmatter` is null. The line-fold pre-pass is gated on `if (frontmatter)`. The output prepend is gated on `if (frontmatter?.size)`. Three independent gates on the same flag mean the off-feature path executes the same code as the pre-feature baseline. R1 (zero regression on 426 tests) is structurally guaranteed; the green test count on every run is confirmation, not proof. **Discipline:** when adding a feature behind a flag, prefer structural guarantees over post-hoc retesting.
+
+**F9 — The Sentry destructive-action hook correctly blocked a cross-suite write during baseline-coverage investigation.** Attempted `cd /tmp && git clone <worktree> /tmp/downdoc-baseline-test && ... && rm -rf /tmp/downdoc-baseline-test` to verify baseline coverage. The Sentry hook (from the `testament-session-restart` contract's C1/C2/C3 enhancement) blocked the command with `[sentry] authorization precondition FAILED for command: ...`. Worked around using `git stash` instead — same result, no cross-suite write, fully reversible. **Confirms the Sentry's design is working as intended** when sessions inadvertently attempt destructive operations outside their authorized scope.
+
+**F10 — Fixture-based regression tests compare API output `+ '\n'` to CLI-written file contents.** The CLI shim writes `downdoc(input, opts) + '\n'` to its output file (line 39 of `lib/cli.js`), but the API `downdoc(input, opts)` returns the string without trailing newline. The fixture test uses `assert.equal(downdoc(input, { frontmatterVendor: 'claude' }) + '\n', fs.readFileSync(mdPath, 'utf8'))` to match. **Generalization:** any future fixture-based test that loads a CLI-produced `.expected.md` and compares to an API call must apply the `+ '\n'` adjustment.
+
+---
+
+### Coverage of R1–R10 (KICKOFF-PROMPT.md Q3)
+
+| Req | Description | Test(s) |
+|---|---|---|
+| R1 | Backward compatibility (426 baseline tests pass) | All `downdoc-test.js` + R1 sentinel in `frontmatter-test.js` |
+| R2 | Frontmatter emission when attributes match | T2 group (3 tests) |
+| R3 | Vendor scoping via single-vendor option | T4 (1 test) |
+| R4 | Multi-namespace via `'all'` or array | T9 (2 tests) |
+| R5 | Kebab → camelCase translation | T2 group (multi-word + single-word) |
+| R6 | Backslash continuation joined with single space | T3 (1 test) |
+| R7 | Idempotency | T5 (1 test) |
+| R8 | No false positives | T1 group (5 tests including the GREEN-added too-few-segments and body-only sentinels) |
+| R9 | Source-order stability within a vendor | R9 group (1 test) |
+| R10 | Zero new dependencies | Confirmed — `package.json` `dependencies` field still empty; new code uses only stdlib (`Map`, `Array.prototype` methods, `node:fs`/`node:path` in tests) |
+| R11 | Test coverage parity (≥90%) | Achieved 100% on `lib/index.js` and `lib/cli.js` |
+| R12 | Documentation | README new section + CHANGELOG entry + dogfood-verified |
+
+Plus 2 CLI tests not previously enumerated:
+- CLI flag respects `-o -` (stdout) for frontmatter output
+- `--help` shows `--frontmatter-vendor name` with description containing "emit YAML frontmatter"
+
+Plus 2 fixture tests:
+- Byte-level regression against `feedback_asciidoctor_over_markdown.expected.md`
+- Structural YAML check for the 4 canonical claude-memory keys
+
+---
+
+### Remaining work
+
+- **Phase 7 (optional):** Upstream PR against `opendevise/downdoc`. Lieutenant judgment required on whether to attempt now, after real-world usage settles, or never (maintain fork indefinitely).
+- **Downstream unblocks:** The fixture `test/fixtures/feedback_asciidoctor_over_markdown.adoc` is the source for the format-policy memory file install in `~/.claude/projects/<slug>/memory/`. That deployment is downstream of this contract (per CASE-BOARD downdoc row's downstream-unblocks list).
