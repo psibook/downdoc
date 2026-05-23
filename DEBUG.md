@@ -9,7 +9,7 @@ How to develop, test, and debug downdoc.
 ```bash
 cd ~/continental/software/cases/downdoc/.claude/worktrees/yaml-frontmatter
 npm install      # installs nothing (zero deps) but creates package-lock state
-npm test         # runs all 426 tests; should be green
+npm test         # runs the full test suite; should be all green
 ```
 
 ---
@@ -21,8 +21,9 @@ npm test         # runs all 426 tests; should be green
 npm test
 
 # Single suite (by filename match)
-node --test test/index-test.js
-node --test test/frontmatter-test.js   # (after we add it)
+node --test test/downdoc-test.js
+node --test test/frontmatter-test.js
+node --test test/cli-test.js
 
 # With coverage
 npm run coverage
@@ -38,7 +39,10 @@ node bin/downdoc README.adoc
 
 # Or after npm link
 npm link
-downdoc --frontmatter-vendor=claude README.adoc   # (after the feature lands)
+downdoc --frontmatter-vendor=claude README.adoc
+
+# Inspect frontmatter emission directly
+node -e "const dd = require('./lib'); console.log(dd('= Title\n:frontmatter-claude-memory-name: Demo\n\nBody.', { frontmatterVendor: 'claude' }))"
 
 # Inspect attribute parsing without converting
 node -e "const dd = require('./lib'); console.log(dd('= Title\n:foo: bar\n\nBody'))"
@@ -81,12 +85,16 @@ git push --force-with-lease origin feature/yaml-frontmatter   # rewritten histor
 
 ## Codebase orientation
 
-| File | Lines | Role |
-|---|---|---|
-| `lib/index.js` | ~1500 | The converter — single function `downdoc(input, opts)` returning a string |
-| `lib/cli.js` | ~150 | CLI shim — parses args, reads file, calls `lib/index`, writes output |
-| `lib/util/read-stream.js` | small | Stream helper for stdin input |
-| `bin/downdoc` | tiny | Executable shim that requires `lib/cli` |
+| File | Role |
+|---|---|
+| `lib/index.js` | The converter — single function `downdoc(input, opts)` returning a string |
+| `lib/cli.js` | CLI shim — parses args, reads file, calls `lib/index`, writes output |
+| `lib/util/read-stream.js` | Stream helper for stdin input |
+| `bin/downdoc` | Executable shim that requires `lib/cli` |
+| `test/downdoc-test.js` | Library tests for AsciiDoc → Markdown conversion (the upstream suite) |
+| `test/cli-test.js` | CLI shim tests — flag parsing, file IO, help text |
+| `test/frontmatter-test.js` | Tests for the `frontmatterVendor` feature (R1–R10) + fixture-based regression |
+| `test/fixtures/*.adoc`, `*.expected.md` | Real-world fixtures with paired expected output |
 
 The converter is regex-driven (no AST). Document-header attributes are parsed by a block of code that recognizes the `:name: value` form between `=` title and the first blank line. The frontmatter feature plugs in there.
 
