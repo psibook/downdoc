@@ -1,0 +1,26 @@
+= Format policy: AsciiDoctor over Markdown
+:frontmatter-claude-memory-name: AsciiDoctor over Markdown for human-consumed files
+:frontmatter-claude-memory-description: The Lieutenant's 2026-05-18 format policy. AsciiDoctor (.adoc) is the canonical source for any file a human will read; Markdown (.md) is acceptable only where the Claude Code harness requires it. When a file must exist in .md form (e.g., memory files), a parallel .adoc source must also exist, and the .md is derived from the .adoc by the downdoc converter via a pre-commit hook.
+:frontmatter-claude-memory-type: feedback
+:frontmatter-claude-memory-origin-session-id: 4b69ca29-dc2a-4765-b3f9-9d7a0925322d
+
+== Why
+
+Markdown has weaker semantics than AsciiDoctor: no built-in admonitions, weaker tables, no native cross-references, and no document-header attribute mechanism for metadata.
+AsciiDoctor provides all of these natively.
+Authoring in AsciiDoctor and converting to Markdown only at the harness boundary preserves authorial intent and keeps the source format consistent across documents.
+
+== When .md is allowed
+
+* Memory files in `~/.claude/projects/<slug>/memory/*.md` — the harness's auto-memory loader requires the `.md` extension.
+* README on npm-published packages — npm and yarn package registries assume Markdown.
+* Any other harness or third-party tool that requires Markdown specifically.
+
+In every such case, the `.adoc` parallel source is canonical.
+The `.md` is regenerated from `.adoc` by the pre-commit hook in `~/continental/`, which invokes downdoc with `--frontmatter-vendor=claude`.
+
+== Authoring rule
+
+When creating any new file the Lieutenant will read directly, default to the `.adoc` extension.
+When asked to produce a `.md` deliverable (and only then), produce the `.adoc` source alongside it and check both into the same repository.
+The `.md` must never be hand-edited; it is a build artifact derived from the `.adoc`.

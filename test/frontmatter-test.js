@@ -2,6 +2,10 @@
 
 const { assert, describe, heredoc, it } = require('./harness')
 const downdoc = require('downdoc')
+const fs = require('node:fs')
+const ospath = require('node:path')
+
+const FIXTURES_DIR = ospath.join(__dirname, 'fixtures')
 
 describe('downdoc() — yaml frontmatter', () => {
   describe('T1 — no false positives (R8)', () => {
@@ -292,6 +296,29 @@ describe('downdoc() — yaml frontmatter', () => {
       const without = downdoc(input)
       const withVendor = downdoc(input, { frontmatterVendor: 'claude' })
       assert.equal(without, withVendor)
+    })
+  })
+
+  describe('real-world fixture (feedback_asciidoctor_over_markdown)', () => {
+    const adocPath = ospath.join(FIXTURES_DIR, 'feedback_asciidoctor_over_markdown.adoc')
+    const mdPath = ospath.join(FIXTURES_DIR, 'feedback_asciidoctor_over_markdown.expected.md')
+
+    it('should convert the format-policy memory file to its expected markdown form', () => {
+      const input = fs.readFileSync(adocPath, 'utf8')
+      const expected = fs.readFileSync(mdPath, 'utf8')
+      // The CLI appends a trailing newline (downdoc(input) + '\n'); the API does not.
+      assert.equal(downdoc(input, { frontmatterVendor: 'claude' }) + '\n', expected)
+    })
+
+    it('should produce frontmatter containing the four canonical claude-memory keys', () => {
+      const input = fs.readFileSync(adocPath, 'utf8')
+      const output = downdoc(input, { frontmatterVendor: 'claude' })
+      const match = output.match(/^---\n([\s\S]*?)\n---\n/)
+      assert.ok(match, 'output must begin with a YAML frontmatter block delimited by ---')
+      const keys = match[1].split('\n').map((line) => line.split(':')[0])
+      for (const required of ['name', 'description', 'type', 'originSessionId']) {
+        assert.ok(keys.includes(required), `frontmatter must contain key "${required}"; got: ${keys.join(', ')}`)
+      }
     })
   })
 })
