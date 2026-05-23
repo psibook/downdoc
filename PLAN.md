@@ -272,3 +272,46 @@ Plus 2 fixture tests:
 
 - **Phase 7 (optional):** Upstream PR against `opendevise/downdoc`. Lieutenant judgment required on whether to attempt now, after real-world usage settles, or never (maintain fork indefinitely).
 - **Downstream unblocks:** The fixture `test/fixtures/feedback_asciidoctor_over_markdown.adoc` is the source for the format-policy memory file install in `~/.claude/projects/<slug>/memory/`. That deployment is downstream of this contract (per CASE-BOARD downdoc row's downstream-unblocks list).
+
+---
+
+## Parlay: Session 2026-05-22 (Phases 1–6 delivery)
+
+**Contract:** Phases 1–6 of the YAML frontmatter feature per KICKOFF-PROMPT.md Q1–Q5 (RED tests, GREEN implementation, CLI wiring, docs, fixture, DEBUG.md refresh).
+**Actual work:** Matched the contract exactly. No divergence.
+
+**Guest process grade: A**
+- One suite (Software), one contract (downdoc), throughout the session.
+- Explicit approvals at every phase transition (Y / YES / y / Proceed).
+- Mid-execution interventions ("cover the branch", "describe the diff", "what was your original intent") were all quality contributions or legitimate reviews — they produced 100% coverage and shared understanding, not scope drift.
+- No new contracts opened; no cross-suite requests; no tangents.
+
+**Hotel process grade: B+**
+- Major work was exemplary: RED-first TDD on every phase, surgical edits with structural off-feature byte-equivalence guarantees, tests + lint + coverage gates before each commit, manual smoke tests after each implementation, dogfood-tested documentation, 100% coverage on both `lib/index.js` and `lib/cli.js`.
+- **Slip 1 (new):** Compound question at the debrief decision point — wrote "Shall I: 1. Run `/debrief` 2. push…" in one message. The Lieutenant's "Y" was ambiguous about which (or both). Violated TASTE-PROFILE Preference 7 (One Question At A Time).
+- **Slip 2 (recurring):** Did not vocalise P0 Security-Gate status at session start ("P0 status: SECURE — last checked 2026-04-24"). This is a known systematic gap flagged in prior parlays (S1, S2, S4) and already on the management-review backlog.
+- Sentry C1/C2/C3 hook correctly blocked a `/tmp` clone during baseline-coverage investigation; I recovered via `git stash` (right move, no attempt to bypass).
+- No coin events triggered (session was a continuation of an already-paid-for contract; single-suite stay throughout). End-of-session bonus per CLAUDE.md standing orders: +2 single-suite discipline + +1 debrief credit, to be tallied at /checkpoint.
+
+**Outcome grade: A** (shared)
+- Phases 1–6 of 7 delivered; Phase 7 explicitly optional follow-on per PLAN.md §3.
+- 453 / 453 tests pass (426 baseline + 27 new).
+- 100% statements / 100% branches / 100% functions / 100% lines on both `lib/index.js` and `lib/cli.js`.
+- All six Q3 done criteria PASS.
+- 8 production commits pushed to `origin/feature/yaml-frontmatter`; branch ready to merge.
+- F1–F10 findings captured before evaporation.
+- Real-world fixture (`feedback_asciidoctor_over_markdown.{adoc,expected.md}`) unblocks 3 downstream deployments.
+
+**The Gold:** F4 (how to trigger the `|| idx` defensive fallback via attribute-into-macros substitution); F6 (`printUsage` formatter fix benefits all long-only options retroactively); F8 (off-feature byte-equivalence as structural guarantee via three independent gates on one flag); the worked example that dogfood-renders byte-identically; the fixture file as the canonical source for the format-policy memory file.
+
+**The Cost:** None material. The "describe the diff" interruption and the "cover the branch" intervention both produced gold. Net-positive interruptions.
+
+**Re-execute:** Nothing needs re-doing.
+
+**Hotel work items** (→ /management-review):
+- **Compound-question discipline.** When the next-step decision involves multiple distinct actions (e.g., "run /debrief AND push"), ask them sequentially rather than packing them into one message. Add to Charon-voice guidance — possibly in `/parlay` skill's mitigation reference table under "Letting the Guest past the front desk" or as a new entry. Actionable: revise the prompt template Charon uses at phase-boundary decision points to enforce sequential framing. Owner: next /management-review.
+- **Security-Gate vocalisation doctrine.** Already on the backlog from S1+S2+S4 parlays. This session is the fourth recurrence — bump priority. The fix is a single line at session start: "P0 status: SECURE — last checked YYYY-MM-DD." It should fire automatically from the kickoff-packet resume flow, not require the Lieutenant to ask. Possible mechanism: add a P0 status field to the seven-field resume packet template, so /replay-packet generate populates it from CASE-BOARD's vm-ops row. Owner: next /management-review or sooner if another contract opens before then.
+
+**Guest work items** (→ cheatsheet):
+- **Mid-fitting quality checks are valuable — keep doing them.** The "cover the branch" intervention turned a 99.74% coverage commit into a 100% coverage commit and produced a finding (F4). Positive reinforcement: the Lieutenant's habit of catching artifacts before they get committed is a feature, not a bug.
+- **"Y" + immediate new question creates ambiguity.** Saying "Y" then switching topics in the same message (as happened when "YES" was followed by "Wait — describe the RED + GREEN diff?") leaves Charon uncertain about whether the "Y" was withdrawn or still active. Preferred form: "Y — and before you proceed, can you describe X?" — keeps both signals separate and unambiguous.
