@@ -3176,6 +3176,21 @@ describe('downdoc()', () => {
       const expected = '**$V^{**}$**'
       assert.equal(downdoc(input), expected)
     })
+
+    it('should convert stem macro introduced via attribute reference', () => {
+      const input = heredoc`
+      = Title
+      :equation: stem:[x^2 + y^2]
+
+      The equation is {equation}.
+      `
+      const expected = heredoc`
+      # Title
+
+      The equation is $x^2 + y^2$.
+      `
+      assert.equal(downdoc(input), expected)
+    })
   })
 
   describe('xrefs', () => {

@@ -179,6 +179,14 @@ You can pass additional runtime AsciiDoc attributes using the `-a` (or `--attrib
 $ npx downdoc -a hide-uri-scheme -a markdown-list-indent=4 README.adoc
 ----
 
+You can emit a YAML frontmatter block at the top of the Markdown output using the `--frontmatter-vendor` option.
+See <<yaml-frontmatter>> below for the attribute convention.
+
+[,console]
+----
+$ npx downdoc --frontmatter-vendor=claude README.adoc
+----
+
 To print a usage statement that includes a complete list of available options, pass the `-h` option.
 
 === API
@@ -202,7 +210,12 @@ The `downdoc` function accepts an object (i.e., map) of options as the second ar
 downdoc(asciidoc, { attributes: { 'markdown-list-indent': 4 } })
 ----
 
-Currently the only supported option in the API is `attributes`, which is an object (i.e., map) of runtime AsciiDoc attributes.
+The supported options are `attributes` (an object of runtime AsciiDoc attributes) and `frontmatterVendor` (a vendor namespace string, an array of strings, or the special value `'all'`; see <<yaml-frontmatter>> below).
+
+[,js]
+----
+downdoc(asciidoc, { frontmatterVendor: 'claude' })
+----
 
 ifndef::env-npm[]
 === npm publish
@@ -276,6 +289,52 @@ For example:
 The binary includes the package metadata and source code of this project in raw form.
 Run `npx pkg -h` or read the https://github.com/vercel/pkg[pkg README] to learn more about how it works.
 endif::[]
+
+[#yaml-frontmatter]
+== YAML frontmatter
+
+When invoked with a `frontmatterVendor` API option or `--frontmatter-vendor` CLI flag, downdoc emits a YAML frontmatter block at the top of the Markdown output.
+The block is populated from document-header attributes whose names match the convention `frontmatter-<vendor>-<artifact>-<field>`.
+Each matching attribute is stripped of its `frontmatter-<vendor>-<artifact>-` prefix, the remaining kebab-case is translated to camelCase, and the result becomes a YAML key.
+
+For example, the following AsciiDoc input:
+
+[,asciidoc]
+----
+= Memory Title
+:frontmatter-claude-memory-name: Roof Test
+:frontmatter-claude-memory-description: A named test pattern
+:frontmatter-claude-memory-type: feedback
+:frontmatter-claude-memory-origin-session-id: 4b69ca29-dc2a-4765-b3f9-9d7a0925322d
+
+Body content.
+----
+
+with `--frontmatter-vendor=claude` (or `{ frontmatterVendor: 'claude' }` in the API) produces:
+
+[,markdown]
+----
+---
+name: Roof Test
+description: A named test pattern
+type: feedback
+originSessionId: 4b69ca29-dc2a-4765-b3f9-9d7a0925322d
+---
+
+# Memory Title
+
+Body content.
+----
+
+The vendor selector accepts:
+
+* a vendor name (e.g., `claude`), in which case only attributes in that namespace are emitted
+* the special value `all`, in which case every matching namespace is emitted, grouped alphabetically by vendor
+* the flag specified multiple times (CLI) or an array of strings (API) for an explicit list of vendors
+
+When the option is not specified, no frontmatter is emitted (even if matching attributes are present in the document); the feature is opt-in.
+Attribute values may span multiple lines using AsciiDoctor's `\` line-continuation; continuation lines are joined with a single space.
+Only attributes that appear in the document header (before the first blank line after the document title) participate; matching attribute entries elsewhere in the body are ignored.
 
 == Copyright and License
 

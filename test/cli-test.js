@@ -342,4 +342,114 @@ describe('downdoc', () => {
       assertx.contents('out.md', expected)
     })
   })
+
+  describe('frontmatter vendor option', () => {
+    it('should emit YAML frontmatter when --frontmatter-vendor=claude is specified', async () => {
+      const input = heredoc`
+      = Title
+      :frontmatter-claude-memory-name: From CLI
+
+      Body.${lf}
+      `
+      const expected = heredoc`
+      ---
+      name: From CLI
+      ---
+
+      # Title
+
+      Body.${lf}
+      `
+      await fsp.writeFile('doc.adoc', input, 'utf8')
+      const args = ['--frontmatter-vendor=claude', 'doc.adoc']
+      await downdoc({ args, stdout })
+      assertx.empty(stdout.string)
+      assertx.contents('doc.md', expected)
+    })
+
+    it('should NOT emit YAML frontmatter when --frontmatter-vendor is not specified', async () => {
+      const input = heredoc`
+      = Title
+      :frontmatter-claude-memory-name: Should be ignored
+
+      Body.${lf}
+      `
+      const expected = heredoc`
+      # Title
+
+      Body.${lf}
+      `
+      await fsp.writeFile('doc.adoc', input, 'utf8')
+      const args = ['doc.adoc']
+      await downdoc({ args })
+      assertx.contents('doc.md', expected)
+    })
+
+    it('should emit alphabetically-grouped frontmatter when --frontmatter-vendor=all is specified', async () => {
+      const input = heredoc`
+      = Title
+      :frontmatter-gemini-memory-name: Gemini
+      :frontmatter-claude-memory-name: Claude
+
+      Body.${lf}
+      `
+      await fsp.writeFile('doc.adoc', input, 'utf8')
+      const args = ['--frontmatter-vendor=all', 'doc.adoc']
+      await downdoc({ args })
+      const result = await fsp.readFile('doc.md', 'utf8')
+      const claudeIdx = result.indexOf('Claude')
+      const geminiIdx = result.indexOf('Gemini')
+      assert.notEqual(claudeIdx, -1)
+      assert.notEqual(geminiIdx, -1)
+      assert.equal(claudeIdx < geminiIdx, true)
+    })
+
+    it('should accept --frontmatter-vendor specified multiple times and emit only those namespaces', async () => {
+      const input = heredoc`
+      = Title
+      :frontmatter-claude-memory-name: Claude
+      :frontmatter-gemini-memory-name: Gemini
+      :frontmatter-openai-memory-name: OpenAI
+
+      Body.${lf}
+      `
+      await fsp.writeFile('doc.adoc', input, 'utf8')
+      const args = ['--frontmatter-vendor=claude', '--frontmatter-vendor=gemini', 'doc.adoc']
+      await downdoc({ args })
+      const result = await fsp.readFile('doc.md', 'utf8')
+      assert.equal(result.includes('OpenAI'), false)
+      assert.equal(result.includes('Claude'), true)
+      assert.equal(result.includes('Gemini'), true)
+    })
+
+    it('should write YAML frontmatter to stdout when -o is -', async () => {
+      const input = heredoc`
+      = Title
+      :frontmatter-claude-memory-name: Stdout
+
+      Body.${lf}
+      `
+      const expected = heredoc`
+      ---
+      name: Stdout
+      ---
+
+      # Title
+
+      Body.${lf}
+      `
+      await fsp.writeFile('doc.adoc', input, 'utf8')
+      const args = ['--frontmatter-vendor=claude', '-o', '-', 'doc.adoc']
+      await downdoc({ args, stdout })
+      assert.equal(stdout.string, expected)
+      assertx.notPath('doc.md')
+    })
+
+    it('should include --frontmatter-vendor in --help output', async () => {
+      const args = ['--help']
+      await downdoc({ args, stdout })
+      assertx.include(stdout.string, '--frontmatter-vendor name')
+      assertx.include(stdout.string, 'emit YAML frontmatter')
+    })
+  })
 })

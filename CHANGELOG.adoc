@@ -4,6 +4,16 @@
 This document provides a summary of all notable changes to downdoc by release.
 For a detailed view of what's changed, refer to the {url-repo}/commits[commit history] of this project.
 
+== Unreleased
+
+=== Added
+
+* Support emitting a YAML frontmatter block at the top of the Markdown output from AsciiDoc document-header attributes matching the pattern `frontmatter-<vendor>-<artifact>-<field>`.
+The feature is opt-in via the `frontmatterVendor` API option or `--frontmatter-vendor` CLI flag (single vendor, repeated flag for multiple vendors, or the special value `all` for every matching namespace).
+The attribute name prefix is stripped and the remainder is translated from kebab-case to camelCase to form the YAML key.
+Multi-line attribute values that use AsciiDoctor's `\` line-continuation are joined with a single space.
+See the README's "YAML frontmatter" section for a worked example.
+
 == 1.1.0-stable (2026-03-23)
 
 === Added
