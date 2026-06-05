@@ -394,3 +394,41 @@ Plus 2 fixture tests:
 **Guest work items** (→ cheatsheet):
 - **Mid-fitting quality checks are valuable — keep doing them.** The "cover the branch" intervention turned a 99.74% coverage commit into a 100% coverage commit and produced a finding (F4). Positive reinforcement: the Lieutenant's habit of catching artifacts before they get committed is a feature, not a bug.
 - **"Y" + immediate new question creates ambiguity.** Saying "Y" then switching topics in the same message (as happened when "YES" was followed by "Wait — describe the RED + GREEN diff?") leaves Charon uncertain about whether the "Y" was withdrawn or still active. Preferred form: "Y — and before you proceed, can you describe X?" — keeps both signals separate and unambiguous.
+
+---
+
+## Parlay: Session 2026-06-05 (Deferred worktree teardown + debrief)
+
+**Contract:** Execute the deferred `feature/yaml-frontmatter` worktree teardown — step (a) of the CASE-BOARD's next-session order — and close out the downdoc contract's last loose end. The check-in interview was deliberately waived by the Lieutenant ("Run the prompt I gave you. Skip the questions.").
+**Actual work:** Matched the contract exactly. Worktree removed + branch force-deleted (verified by measurement), debrief filed (PLAN.md F17–F19 + CASE-BOARD row update), both committed. No divergence, no scope drift.
+
+**Guest process grade: A**
+- One suite (Software), one contract (downdoc), zero tangents.
+- The destructive-action authorization was textbook: an explicit typed message naming the exact action ("Authorized: remove the `.claude/worktrees/yaml-frontmatter` worktree and force-delete the `feature/yaml-frontmatter` branch.") — the opposite of "tipping without checking the bill." It cleared the Sentry's Q-LLM auth gate on the first try.
+- The check-in was waived rather than skipped silently; Q1 ("most pressing contract?") was effectively pre-answered when Charon surfaced the higher-priority P1 siblings and the Guest still directed the teardown. Acceptable for a mechanical resume.
+
+**Hotel process grade: B+**
+- Exemplary handling of the Sentry's **two** preconditions: the clean-tree gate was resolved legitimately via the repo-local `.git/info/exclude` (NOT upstream's tracked `.gitignore`, preserving fork-rebase hygiene), and the authorization gate was **not** evaded — Charon surfaced it and requested an explicit named authorization rather than reaching for `--no-verify` or a sandbox override.
+- Every teardown step verified by measurement (worktree list, branch list, post-deletion `git ls-remote` confirming cold storage at `97ef8bf`). Surgical, file-scoped commits in both repos.
+- **Slip (recurring — "Skipping the register"):** Did not vocalise the P0 Security-Gate status at session start ("P0 vm-ops: SECURE — last checked 2026-04-24"). P0 was confirmed SECURE from the CASE-BOARD but never read aloud. This is the **5th recurrence** (S1, S2, S4, 2026-05-22 parlay, this session) and is the sole reason the grade is not higher.
+
+**Outcome grade: A** (shared)
+- Deferred teardown executed and verified; `git worktree prune` clean.
+- Debrief F17–F19 committed (downdoc `1d1e09f`); CASE-BOARD downdoc row marked teardown COMPLETE (continental `3fe6229`).
+- Residual `distracted-hypatia-9ebfc8` worktree cleanly flagged (not removed, under C3) with exact cleanup commands.
+- downdoc contract fully wound down. Both commits local; push rides at `/checkpoint`.
+
+**The Gold:**
+- F18 — the Sentry fires **two** gates in sequence (clean-tree → per-action auth); the `.git/info/exclude`-not-`.gitignore` move satisfies the first on a fork without breaking rebase hygiene. Reusable for any `/session-restart merge-back` teardown on a fork.
+- F19 — live sighting of an auto-created `claude/<adjective>-<surname>-<hex>` worktree (`distracted-hypatia-9ebfc8`): fresh empirical evidence for `session-launch-context-discipline`.
+- Fresh corroboration that the Q-LLM counts only literal authorization of the named action (disk-overlap F3 / testament C1/C2/C3) — now with the two-gate-sequence nuance added.
+
+**The Cost:** None material. The Sentry double-block cost two extra round-trips, but that is the hook working as designed, not waste.
+**Re-execute:** Nothing needs re-doing.
+
+**Hotel work items** (→ /management-review):
+- **Security-Gate vocalisation — now chronic (5th recurrence).** Bump priority above "backlog." Concrete fix: add a P0-status field to the seven-field resume packet template so `/replay-packet generate` populates it from the CASE-BOARD vm-ops row, and Charon reads it aloud as the first line of any resume — no Guest prompt required. Natural home: fold into the `session-launch-context-discipline` contract, which already touches the kickoff-packet flow. Owner: next `/management-review` or that contract, whichever fires first.
+- **Sentry two-gate UX.** The clean-tree and authorization preconditions surface **serially** — the user fixes the tree, retries, and only then learns an explicit authorization is also required. The `sentry-c1c2c3-compliance` mini-contract should surface BOTH unmet preconditions in the first block so the operator sees the full barrier at once (one round-trip, not two). Owner: `sentry-c1c2c3-compliance`.
+
+**Guest work items** (→ cheatsheet):
+- **Name the destructive action verbatim when the Sentry gates it.** This session's authorization ("Authorized: remove the X worktree and force-delete the Y branch.") cleared the Q-LLM gate first try. One-line reminder: *when the Sentry asks for authorization, restate the specific destructive action in your own words — a terse "go ahead" or "run it" will be rejected.*
